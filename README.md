@@ -119,7 +119,6 @@ Localization is available with the `Accept-Language` header: `ru`, `en`, and `kz
 Import these files into Postman:
 
 - `postman/driver-exam-reservation.postman_collection.json`
-- `postman/local.postman_environment.json`
 
 The collection stores `studentId` and `reservationId` from successful create responses and includes success, validation,
 not found, business rule, pagination, filtering, cancel, and delete scenarios.
