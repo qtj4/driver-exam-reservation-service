@@ -23,7 +23,7 @@ public interface ExamReservationRepository extends JpaRepository<ExamReservation
     boolean existsByStudent_IdAndStatusAndIdNot(UUID studentId, ReservationStatus status, UUID id);
 
     @EntityGraph(attributePaths = "student")
-    @Query("select r from ExamReservation r where r.id = :id")
+    @Query(value = "select * from exam_reservation where id = :id", nativeQuery = true)
     Optional<ExamReservation> findByIdWithStudent(@Param("id") UUID id);
 
     @Override

@@ -1,54 +1,74 @@
 # Driver Exam Reservation Service
 
-REST API for creating students and booking driving license exams for them.
+REST API сервис для управления студентами и бронированиями экзамена на водительское удостоверение.
 
-## Technologies
+Проект позволяет:
+
+- создавать, получать, обновлять и удалять студентов;
+- создавать, получать, обновлять и удалять бронирования экзамена;
+- отменять бронирование отдельным endpoint;
+- фильтровать и постранично получать списки;
+- проверять бизнес-правила на уровне сервиса и базы данных.
+
+## Технологии
 
 - Java 21
 - Spring Boot 3.5.8
-- Spring Web, Spring Data JPA, Validation, Actuator
+- Spring Web
+- Spring Data JPA
+- Bean Validation
 - PostgreSQL 16
 - Liquibase
-- SpringDoc OpenAPI 2.8.14
-- Lombok 1.18.36
-- MapStruct 1.6.3
+- SpringDoc OpenAPI / Swagger UI
+- Lombok
+- MapStruct
 - Maven
-- Docker and Docker Compose
-- JUnit 5, Mockito, AssertJ, Testcontainers
+- Docker и Docker Compose
+- JUnit 5, Mockito, Testcontainers
 
-## Requirements
+## Запуск через Docker
+
+Требования:
 
 - Docker
 - Docker Compose
-- Optional for local development: JDK 21 and Maven
 
-## Run
+Запуск проекта:
 
 ```bash
 docker compose up --build
 ```
 
-Stop:
+Остановка:
 
 ```bash
 docker compose down
 ```
 
-Reset database:
+Остановка с удалением данных PostgreSQL:
 
 ```bash
 docker compose down -v
 ```
 
-Useful URLs:
+После запуска доступны:
 
 - Swagger UI: http://localhost:8080/swagger-ui/index.html
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
-- Health: http://localhost:8080/actuator/health
+- Health check: http://localhost:8080/actuator/health
 
-## Database Configuration
+## Конфигурация базы данных
 
-The application reads these environment variables:
+В Docker Compose поднимается PostgreSQL с такими параметрами:
+
+| Параметр | Значение |
+| --- | --- |
+| Database | `driver_exam_reservation_db` |
+| User | `postgres` |
+| Password | `postgres` |
+| Port | `5432` |
+
+Приложение читает настройки из environment variables:
 
 | Variable | Default |
 | --- | --- |
@@ -59,46 +79,96 @@ The application reads these environment variables:
 | `LIQUIBASE_ENABLED` | `true` |
 | `SHOW_SQL` | `false` |
 
-Docker Compose starts PostgreSQL with database `driver_exam_reservation_db`, user `postgres`, and password `postgres`.
+Схема базы создается через Liquibase. Hibernate настроен в режиме `ddl-auto: validate`, то есть он не создает таблицы сам, а только проверяет соответствие Entity и схемы.
 
 ## API
 
-| Method | Path | Description |
+Base URL:
+
+```text
+http://localhost:8080
+```
+
+### Students
+
+| Method | Path | Описание |
 | --- | --- | --- |
-| `POST` | `/api/v1/students` | Create student |
-| `GET` | `/api/v1/students/{id}` | Get student by id |
-| `GET` | `/api/v1/students` | List students with pagination and filters |
-| `PUT` | `/api/v1/students/{id}` | Update student |
-| `DELETE` | `/api/v1/students/{id}` | Delete student |
-| `POST` | `/api/v1/exam-reservations` | Create exam reservation |
-| `GET` | `/api/v1/exam-reservations/{id}` | Get reservation by id |
-| `GET` | `/api/v1/exam-reservations` | List reservations with pagination and filters |
-| `PUT` | `/api/v1/exam-reservations/{id}` | Update reservation |
-| `PATCH` | `/api/v1/exam-reservations/{id}/cancel` | Cancel reservation |
-| `DELETE` | `/api/v1/exam-reservations/{id}` | Delete reservation |
+| `POST` | `/api/v1/students` | Создать студента |
+| `GET` | `/api/v1/students/{id}` | Получить студента по id |
+| `GET` | `/api/v1/students` | Получить список студентов |
+| `PUT` | `/api/v1/students/{id}` | Обновить студента |
+| `DELETE` | `/api/v1/students/{id}` | Удалить студента |
 
-Student filters:
+Пример фильтрации студентов:
 
 ```text
-/api/v1/students?page=0&size=10&sort=createdAt,desc&search=ivan&iin=123456789012
+/api/v1/students?page=0&size=10&sort=createdAt,desc&search=ayan
+/api/v1/students?iin=910101123456
 ```
 
-Reservation filters:
+### Exam Reservations
+
+| Method | Path | Описание |
+| --- | --- | --- |
+| `POST` | `/api/v1/exam-reservations` | Создать бронирование |
+| `GET` | `/api/v1/exam-reservations/{id}` | Получить бронирование по id |
+| `GET` | `/api/v1/exam-reservations` | Получить список бронирований |
+| `PUT` | `/api/v1/exam-reservations/{id}` | Обновить бронирование |
+| `PATCH` | `/api/v1/exam-reservations/{id}/cancel` | Отменить бронирование |
+| `DELETE` | `/api/v1/exam-reservations/{id}` | Удалить бронирование |
+
+Пример фильтрации бронирований:
 
 ```text
-/api/v1/exam-reservations?studentId=<uuid>&examType=THEORY&status=ACTIVE&from=2026-06-16T09:00:00&to=2026-06-30T18:00:00
+/api/v1/exam-reservations?studentId=<uuid>&examType=THEORY&status=ACTIVE
+/api/v1/exam-reservations?from=2026-06-16T09:00:00&to=2026-06-30T18:00:00
 ```
 
-## Business Rules
+## Примеры запросов
 
-- Student IIN is required, unique, and must contain exactly 12 digits.
-- A student must exist before creating or moving a reservation to that student.
-- A reservation cannot be created for a past date and time.
-- One student can have only one `ACTIVE` reservation.
-- New reservations are always created with status `ACTIVE`.
-- A reservation with status `COMPLETED` cannot be cancelled.
+Создание студента:
 
-## Error Format
+```json
+{
+  "iin": "910101123456",
+  "firstName": "Ayan",
+  "lastName": "Karimov",
+  "phone": "+77770000001"
+}
+```
+
+Создание бронирования:
+
+```json
+{
+  "studentId": "550e8400-e29b-41d4-a716-446655440000",
+  "examType": "THEORY",
+  "examDateTime": "2026-06-16T09:00:00"
+}
+```
+
+При создании бронирования `status` не передается клиентом. Сервис автоматически устанавливает `ACTIVE`.
+
+## Бизнес-правила
+
+- `iin` обязателен, уникален и должен содержать ровно 12 цифр.
+- `firstName`, `lastName`, `phone` обязательны.
+- Студент должен существовать перед созданием бронирования.
+- Нельзя создать бронирование на дату и время в прошлом.
+- У одного студента может быть только одно активное бронирование.
+- Новое бронирование всегда создается со статусом `ACTIVE`.
+- Бронирование со статусом `COMPLETED` нельзя отменить.
+
+Правило "одно ACTIVE бронирование" защищено дважды:
+
+- в сервисе, чтобы вернуть понятную ошибку клиенту;
+- в PostgreSQL через partial unique index, чтобы защититься от параллельных запросов.
+
+## Формат ошибок
+
+Ошибки возвращаются централизованно через `@RestControllerAdvice`.
+
+Пример validation error:
 
 ```json
 {
@@ -112,33 +182,61 @@ Reservation filters:
 }
 ```
 
-Localization is available with the `Accept-Language` header: `ru`, `en`, and `kz`. The default locale is `ru`.
+Поддерживаются языки `ru`, `en`, `kz` через header:
+
+```http
+Accept-Language: ru
+```
+
+По умолчанию используется русский язык.
+
+## Swagger
+
+Swagger UI доступен по адресу:
+
+```text
+http://localhost:8080/swagger-ui/index.html
+```
+
+В Swagger описаны endpoints, query parameters, request examples и основные response codes.
 
 ## Postman
 
-Import these files into Postman:
+Коллекция находится здесь:
 
-- `postman/driver-exam-reservation.postman_collection.json`
+```text
+postman/driver-exam-reservation.postman_collection.json
+```
 
-The collection stores `studentId` and `reservationId` from successful create responses and includes success, validation,
-not found, business rule, pagination, filtering, cancel, and delete scenarios.
+В коллекции есть сценарии для:
 
-## Local Checks
+- health check;
+- создания студента;
+- проверки validation errors;
+- создания бронирования;
+- проверки duplicate active reservation;
+- отмены бронирования;
+- удаления записей.
 
-Compile:
+## Локальные проверки
+
+Компиляция:
 
 ```bash
 mvn compile
 ```
 
-Run tests:
+Запуск тестов:
 
 ```bash
 mvn test
 ```
 
-Run linter:
+Проверка стиля:
 
 ```bash
 mvn checkstyle:check
 ```
+
+Integration tests используют Testcontainers и поднимают реальный PostgreSQL. Для их запуска Docker должен быть запущен.
+
